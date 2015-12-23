@@ -393,7 +393,7 @@ class Image{
 	template<class RT>
 	Image<RT>* blur(int s){
 		int n = s*2+1;
-		Image<RT>* result = new Image<RT>(height, width);
+		Image<RT> *result = new Image<RT>(height, width);
 		Image<double> tmp(height, width);
 		double **filter = newTex<double>(n, n);
 		gaussianFilter(filter, n);
@@ -912,24 +912,24 @@ class Image{
 	    return ((1.0 / sqrt(2 * 3.1415926536 * theta)) * exp(-(n * n) / (2 * theta * theta)));
 	}
 	
-	int Pascal_triangle(int n, int r){
-		int x=1; // N¶¥
-		int y=1; // N-R¶¥
-		int z=1; // R¶¥
-		int ans=0; //µ²ªG
+	unsigned long long int Pascal_triangle(unsigned long long int n, unsigned long long int r){
+		unsigned long long int x = 1; // N¶¥
+		unsigned long long int y = 1; // N-R¶¥
+		unsigned long long int z = 1; // R¶¥
+		unsigned long long int ans = 0; //µ²ªG
 		
 		if ( n==0 || r==n ) return 1;
 		else
 		{
-			for(int i=1;i<n+1;i++)
+			for (unsigned long long int i = 1; i<n + 1; i++)
 			{
 				x =x* i;
 			}
-			for(int j=1;j<n-r+1;j++)
+			for (unsigned long long int j = 1; j<n - r + 1; j++)
 			{
 				y=y*j;
 			}
-			for(int o=1;o<r+1;o++)
+			for (unsigned long long int o = 1; o<r + 1; o++)
 			{
 				z=z*o;
 			}
@@ -942,13 +942,13 @@ class Image{
 		//int sumN=0;
 		for(int i=0;i<N;i++)
 		{
-			int v = Pascal_triangle(N-1,i);
+			unsigned long long int v = Pascal_triangle(N - 1, i);
 			filter[0][i] = (double)v;
 			//sumN+=v;
 		}
 		for(int j=1;j<N;j++)
 		{
-			int v = Pascal_triangle(N-1,j);
+			unsigned long long int v = Pascal_triangle(N - 1, j);
 			filter[j][0] = (double)v;
 			//sumN+=v;
 		}
