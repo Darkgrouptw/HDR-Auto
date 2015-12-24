@@ -60,9 +60,10 @@ private:
 	void					ImageBinarization(Image<double> *, double);
 
 	// 2值化
-	bool					IsInQueue(QVector<QVector2D>, int, int);							// 確定抓進來的東西，沒有重複
+	bool					IsInQueue(QVector<QVector2D> *, int, int);							// 確定抓進來的東西，沒有重複
 	bool					IsSameColor(Image<double> *, QVector2D, QVector2D);					// 判斷兩個點的顏色一不一樣
 	void					Grouping(Image<double> *);											//分群化
+	bool					CheckConditionInQueue(QVector<QVector2D> *, int **, int, int, Image<double> *);
 	const double			threshold = 0.5;													// 取臨界值，在座二值化的時候，左邊的點數目要是 => 總共 x threshold
 
 	const bool				DebugMode = true;													//DebugMode 是否要開啟									

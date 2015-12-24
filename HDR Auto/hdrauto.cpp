@@ -320,13 +320,13 @@ void HDRAuto::ImageBinarization(Image<double> *Mask, double tempInt)
 	//////////////////////////////////////////////////////////////////////////
 	// Histogram 假設RGB是0~255
 	//////////////////////////////////////////////////////////////////////////
-	int HistogramResult[256];
+	/*int HistogramResult[256];
 	for (int i = 0; i < 256; i++)
 		HistogramResult[i] = 0;
 	for (int i = 0; i < Mask->height; i++)
 		for (int j = 0; j < Mask->width; j++)
 			if (Check_In_Area(j, i))
-				HistogramResult[(int)Mask->R[i][j]] ++;
+				HistogramResult[(int)Mask->R[i][j]] ++;*/
 	/*
 	//////////////////////////////////////////////////////////////////////////
 	//	判斷 是不是在半徑內的點 TotalPixelNumber
@@ -361,15 +361,15 @@ void HDRAuto::ImageBinarization(Image<double> *Mask, double tempInt)
 			else
 				FillGrayColor(Mask, i, j, 255);
 }
-bool HDRAuto::IsInQueue(QVector<QVector2D> Temp, int x, int y)
+bool HDRAuto::IsInQueue(QVector<QVector2D> *Temp, int x, int y)
 {
-	if (Temp.size() == 0)
+	if (Temp->size() == 0)
 		return false;
 
 	int Index = 0;
-	while (Temp.size() < Index)
+	while (Temp->size() > Index)
 	{
-		if (Temp[Index].x() == x && Temp[Index].y() == y)
+		if ((*Temp)[Index].x() == x && (*Temp)[Index].y() == y)
 			return true;
 		Index++;
 	}
@@ -380,6 +380,16 @@ bool HDRAuto::IsSameColor(Image<double> *img, QVector2D a, QVector2D b)
 	if (img->R[(int)a.y()][(int)a.x()] == img->R[(int)b.y()][(int)b.x()] &&
 		img->G[(int)a.y()][(int)a.x()] == img->G[(int)b.y()][(int)b.x()] &&
 		img->B[(int)a.y()][(int)a.x()] == img->B[(int)b.y()][(int)b.x()])
+		return true;
+	return false;
+}
+bool HDRAuto::CheckConditionInQueue(QVector<QVector2D> *Temp, int **PointTable, int dx, int dy, Image<double> *img)
+{
+	if ((*Temp)[0].x() + dx >= 0			&& (*Temp)[0].y() + dy >= 0 &&								// 左上 邊界
+		(*Temp)[0].x() + dx < img->width	&& (*Temp)[0].y() + dy < img->height &&						// 右下 邊界
+		PointTable[(int)(*Temp)[0].x() + dx][(int)(*Temp)[0].y() + dy] == -1 &&							// 被走過
+		IsSameColor(img, (*Temp)[0], QVector2D((*Temp)[0].x() + dx, (*Temp)[0].y() + dy)) &&			// 是否是同一個顏色
+		!IsInQueue(Temp, (*Temp)[0].x() + dx, (*Temp)[0].y() + dy))
 		return true;
 	return false;
 }
@@ -398,41 +408,66 @@ void HDRAuto::Grouping(Image<double> *img)
 	}
 
 	// 再來用 Queue 做BFS (如果適用Stack，就是教DFS)
-	const int TotalPoint = img->width * img->height;
-	int PointCount = 0, lastX = 0, lastY = 0, lastID = 0;
+	int lastX = 0, lastY = 0, lastID = 0;
+	bool TrackFinish = false;
 	QVector<QVector<QVector2D> *> GroupingResult;
-	QVector<QVector2D> Temp;				// BFS 的過程
-	while (TotalPoint > PointCount)
+	QVector<QVector2D> *TempQueue;			// 要存到GroupResult的結果
+	QVector<QVector2D> *Temp = new QVector<QVector2D>();				// BFS 的過程
+	while (!TrackFinish)
 	{
-		Temp.push_back(QVector2D(lastX,lastY));
-		while (Temp.size() != 0)
+		Temp->push_back(QVector2D(lastX, lastY));
+		TempQueue = new QVector<QVector2D>();
+		while (Temp->size() != 0)
 		{
-			PointCheckTable[(int)Temp[0].x()][(int)Temp[0].y()] = lastID;
-			if (Temp[0].x() - 1 >= 0 && !IsInQueue(Temp, Temp[0].x() - 1, Temp[0].y()) && IsSameColor(img,Temp[0], QVector2D(Temp[0].x() - 1, Temp[0].y())))				// Left Pixel
-				Temp.push_back(QVector2D(Temp[0].x() - 1, Temp[0].y()));
-			else if (Temp[0].y() - 1 >= 0 && !IsInQueue(Temp, Temp[0].x(), Temp[0].y() - 1) && IsSameColor(img, Temp[0], QVector2D(Temp[0].x(), Temp[0].y() - 1)))			// Top Pixel
-				Temp.push_back(QVector2D(Temp[0].x(), Temp[0].y() - 1));
-			else if (Temp[0].x() + 1 < img->width && !IsInQueue(Temp, Temp[0].x() + 1, Temp[0].y()) && IsSameColor(img, Temp[0], QVector2D(Temp[0].x() + 1, Temp[0].y())))	// Right Pixel
-				Temp.push_back(QVector2D(Temp[0].x() + 1, Temp[0].y()));
-			else if (Temp[0].y() + 1 < img->height && !IsInQueue(Temp, Temp[0].x(), Temp[0].y() + 1) && IsSameColor(img, Temp[0], QVector2D(Temp[0].x(), Temp[0].y() + 1)))	// Down Pixel
-				Temp.push_back(QVector2D(Temp[0].x(), Temp[0].y() + 1));
-			Temp.pop_front();
+			PointCheckTable[(int)(*Temp)[0].x()][(int)(*Temp)[0].y()] = lastID;
+
+			if (CheckConditionInQueue(Temp, PointCheckTable, -1, 0, img))	// Left Pixel
+			{
+				Temp->push_back(QVector2D((*Temp)[0].x() - 1, (*Temp)[0].y()));
+				TempQueue->push_back(QVector2D((*Temp)[0].x() - 1, (*Temp)[0].y()));
+			}
+			if (CheckConditionInQueue(Temp, PointCheckTable, 0, -1, img))	// Top Pixel
+			{
+				Temp->push_back(QVector2D((*Temp)[0].x(), (*Temp)[0].y() - 1));
+				TempQueue->push_back(QVector2D((*Temp)[0].x(), (*Temp)[0].y() - 1));
+			}
+			if (CheckConditionInQueue(Temp, PointCheckTable, 1, 0, img))	// Right Pixel
+			{
+				Temp->push_back(QVector2D((*Temp)[0].x() + 1, (*Temp)[0].y()));
+				TempQueue->push_back(QVector2D((*Temp)[0].x() + 1, (*Temp)[0].y()));
+			}
+			if (CheckConditionInQueue(Temp, PointCheckTable, 0, 1, img))	// Down Pixel
+			{
+				Temp->push_back(QVector2D((*Temp)[0].x(), (*Temp)[0].y() + 1));
+				TempQueue->push_back(QVector2D((*Temp)[0].x(), (*Temp)[0].y() + 1));
+			}
+			Temp->pop_front();
 		}
-		lastID++;
+		GroupingResult.push_back(TempQueue);
+		//qDebug() << "lastID = " << lastID << lastX << lastY;
 
 		bool StartX = false;
-		for (int j = lastY; j < img->height; j++)
-			for (int i = (StartX ? 0 : lastX); i < img->width; i++)
+		bool findResult = false;
+		for (int j = lastY; j < img->height && !findResult; j++)
+		{
+			for (int i = (StartX ? 0 : lastX); i < img->width && !findResult; i++)
 				if (PointCheckTable[i][j] == -1)
 				{
 					lastX = i;
 					lastY = j;
+					findResult = true;
 				}
+				else if (i == img->width - 1 && j == img->height - 1)
+					TrackFinish = true;
+				StartX = true;
+		}
+		lastID++;
 	}
 
 	//////////////////////////////////////////////////////////////////////////
 	// 分群之後填顏色
 	//////////////////////////////////////////////////////////////////////////
+	lastID--;	// 把最後家的扣掉
 	int *B = new int[lastID - 1];
 
 	QTime time = QTime::currentTime();
@@ -441,16 +476,23 @@ void HDRAuto::Grouping(Image<double> *img)
 		B[i -1] = qrand() * 101 % 255;
 
 	//////////////////////////////////////////////////////////////////////////
-	// 開始填顏色
+	// 開始填顏色，分群，如果總面積不超過 0.2 就把他填
 	//////////////////////////////////////////////////////////////////////////
 	for (int i = 0; i < img->height; i++)
-		for (int j = 0; j < img->width;i++)
+		for (int j = 0; j < img->width; j++)
 			if (PointCheckTable[j][i] != 0)
-			{
-				img->R[i][j] = 0;
-				img->G[i][j] = 0;
-				img->B[i][j] = B[PointCheckTable[j][i] - 1];
-			}
+				if (GroupingResult[PointCheckTable[j][i]]->size() > Radius * Radius * 0.2)		// 把大的區塊的顏色塗白色
+				{
+					img->R[i][j] = 255;
+					img->G[i][j] = 255;
+					img->B[i][j] = 255;
+				}
+				else																			// 把小的區塊 填上面邊一格的顏色
+				{
+					img->R[i][j] = img->R[i - 1][j];
+					img->G[i][j] = img->G[i - 1][j];
+					img->B[i][j] = img->B[i - 1][j];
+				}
 
 }
 void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsigned char> imgs[], int nImage)
@@ -466,9 +508,10 @@ void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsig
 	Mask = Mask->blur<double>(9);
 	ImageBinarization(Mask, 127);
 	Grouping(Mask);
-
+	
 	if (DebugMode)
 		Mask->writeImage((FilePath + "Mask").toLocal8Bit().data(), I_JPG_T);
+
 
 	qDebug() << "FinkMaskArea => " << CountTime.elapsed() / 1000.0 << " s";
 }
