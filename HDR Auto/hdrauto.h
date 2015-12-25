@@ -40,7 +40,7 @@ private:
 	
 
 	// Cut Image to Fit
-	bool					ReadImageAndCut(QString, int, QTextStream *, Image<unsigned char> *, double *);//先用QT 讀檔 再去把圖裁剪下來
+	bool					ReadImage(QString, int, QTextStream *, Image<unsigned char> *, double *);//讀檔近來
 	// HDR 做的事情
 	void					DoHDRMain(QString, Image<unsigned char> *, Image<double> &, double*, int);	
 	bool					Check_In_Area(int, int);											// 判斷選的典試不適在相機的範圍裡
@@ -54,7 +54,8 @@ private:
 	int						CenterY;
 
 	// 找出哪裡是不是有遮住的算法
-	void					FindMaskArea(QString, Image<double> &, Image<unsigned char> *, int);
+	void					CutImageToCube(Image<double> &);									//把邊界剪裁到 1453 x 1453
+	void					FindMaskArea(QString, Image<double> &, Image<unsigned char> *, int, Image<double> *);
 	void					FillGrayColor(Image<double> *, int, int, int);						// 把灰階值填進去
 	void					ImgToGray(Image<double> *, Image<unsigned char> *, int);
 	void					ImageBinarization(Image<double> *, double);
@@ -62,10 +63,20 @@ private:
 	// 2值化
 	bool					IsInQueue(QVector<QVector2D> *, int, int);							// 確定抓進來的東西，沒有重複
 	bool					IsSameColor(Image<double> *, QVector2D, QVector2D);					// 判斷兩個點的顏色一不一樣
-	void					Grouping(Image<double> *);											//分群化
+	void					Grouping(Image<double> *);											// 分群化
 	bool					CheckConditionInQueue(QVector<QVector2D> *, int **, int, int, Image<double> *);
 	const double			threshold = 0.5;													// 取臨界值，在座二值化的時候，左邊的點數目要是 => 總共 x threshold
+	
+	// Texture Synthesis
+	bool					BounaryCheck(int, int, int, int);									// 確定有沒有這個值
+	void					TextureSynthesis(Image<double> &,Image<double> *);					// 有Mask只要填顏色而已~~
 
+	//位移的部分
+	const int				StartXPos = 564;
+	const int				StartYPos = 155;
+	const int				CubeLength = 1453;
+	
+	
 	const bool				DebugMode = true;													//DebugMode 是否要開啟									
 private slots:
 	void					OpenFileEvent();													//開啟檔案的事件
