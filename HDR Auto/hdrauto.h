@@ -49,7 +49,7 @@ private:
 	void					HDR_image(Image<double> &, Image<unsigned char> *, int, double *, double *, double **);
 	void					Gsolve(double **, unsigned char **, double *, int, double *, int, int);
 
-	int						Radius;																//半徑
+	const int				Radius = 726;														//半徑
 	int						CenterX;															//中心座標
 	int						CenterY;
 
@@ -69,12 +69,19 @@ private:
 	
 	// Texture Synthesis
 	bool					BounaryCheck(int, int, int, int);									// 確定有沒有這個值
-	void					TextureSynthesis(Image<double> &,Image<double> *);					// 有Mask只要填顏色而已~~
+	void					TextureSynthesis(Image<double> &,Image<double> * ,QString);			// 有Mask只要填顏色而已~~
+
+	// 把145個值算出來填顏色
+	int						ChangeCoordinate_ToPatchIndex(int, int);							// 給仰角跟角度，傳出一個patch index
+	int						CountForPatchIndex(int, int);										// 給兩個點判斷說是在哪一個patch
+	void					RenderHDR_ToResult(Image<double> &, Image<double> *&);				// 把結果顯示在 Render
 
 	//位移的部分
 	const int				StartXPos = 564;
 	const int				StartYPos = 155;
 	const int				CubeLength = 1453;
+
+	const double			ErrorArea = 0.001;
 	
 	
 	const bool				DebugMode = true;													//DebugMode 是否要開啟									

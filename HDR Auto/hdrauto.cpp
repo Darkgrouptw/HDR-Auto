@@ -385,21 +385,19 @@ bool HDRAuto::BounaryCheck(int width, int height, int tx, int ty)
 	return true;
 }
 
-void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask)
+void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask ,QString FilePath)
 {
 	qDebug() << "========== Texture Synthesis ==========";
 	CountTime.restart();
 	//////////////////////////////////////////////////////////////////////////
 	// 建一個Table把可以走過的路徑，填到這個表裡
 	//////////////////////////////////////////////////////////////////////////
+	bool *_CheckInAreaTable = new bool [img.width*img.height];
 	bool **CheckInAreaTable = new bool *[img.width];
-#pragma  omp parallel for
+	memset(_CheckInAreaTable, 0, img.width*img.height*sizeof(bool));
 	for (int i = 0; i < img.width; i++)
-	{
-		CheckInAreaTable[i] = new bool[img.height];
-		for (int j = 0; j < img.height; j++)
-			CheckInAreaTable[i][j] = false;
-	}
+		CheckInAreaTable[i] = &_CheckInAreaTable[i*img.width];
+
 #pragma  omp parallel for
 	for (int i = 0; i < img.height; i++)
 		for (int j = 0; j < img.width; j++)
@@ -410,43 +408,77 @@ void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask)
 	//////////////////////////////////////////////////////////////////////////
 	// 現在開始Tracking整張圖
 	//////////////////////////////////////////////////////////////////////////
-	double ColorDistanceTemp;
+	//double ColorDistanceTemp;
 	double MinColorDistance;
 	double RColor;
 	double GColor;
 	double BColor;
+	int CountPixel = 0;
 
+#pragma omp parallel for
+	for (int i = 0; i < img.height; i++)
+		for (int j = 0; j < img.width; j++)
+			if (CheckInAreaTable[j][i] && Mask->R[i][j] == 0)
+			{
+				img.R[i][j] = (rand() % 256);
+				img.G[i][j] = (rand() % 256);
+				img.B[i][j] = (rand() % 256);
+			}
+	//img.writeImage((FilePath + "Temp").toLocal8Bit().data(), I_HDR_T);
 	for (int i = 0; i < img.height; i++)
 		for (int j = 0; j < img.width;j++)
 			if (CheckInAreaTable[j][i] && Mask->R[i][j] == 0)
 			{
-				qDebug() << "Need Fill Color =>" << j << i << Mask->R[i][j] << Mask->G[i][j] << Mask->B[i][j];
+				//qDebug() << "Need Fill Color =>" << j << i << Mask->R[i][j] << Mask->G[i][j] << Mask->B[i][j];
 				MinColorDistance = 99999999;
-#pragma omp parallel for
-				for (int y = 0; y < img.height; y++)
-					for (int x = 0; x < img.width; x++)
-						if (CheckInAreaTable[x][y] && (y != i || x != j))
-						{
-							ColorDistanceTemp = 0;
-							for (int iny = -2; iny <= 2; iny++)
-								for (int inx = -2; inx <= 2;inx++)
-									if (BounaryCheck(img.width, img.height, x + inx, y + iny) && (iny !=0 || inx !=0))
-									{
-										ColorDistanceTemp += (img.R[i + iny][j + inx] - img.R[y + iny][x + inx]) * (img.R[i + iny][j + inx] - img.R[y + iny][x + inx]);
-										ColorDistanceTemp += (img.G[i + iny][j + inx] - img.G[y + iny][x + inx]) * (img.G[i + iny][j + inx] - img.G[y + iny][x + inx]);
-										ColorDistanceTemp += (img.B[i + iny][j + inx] - img.B[y + iny][x + inx]) * (img.B[i + iny][j + inx] - img.B[y + iny][x + inx]);
-									}
-							if (ColorDistanceTemp < MinColorDistance)
-							{
-								MinColorDistance = ColorDistanceTemp;
-								RColor = img.R[y][x];
-								GColor = img.G[y][x];
-								BColor = img.B[y][x];
-							}
-						}
-				img.R[i][j] = RColor;
-				img.G[i][j] = GColor;
-				img.B[i][j] = BColor;
+				const int r = 150;
+//				int ye = img.height > i + r ? i + r : img.height;
+//				int xe = img.width > j + r ? j + r : img.width;
+//#pragma omp parallel for
+//				for (int y = i-r > 0 ? i-r : 0; y < ye; y++)
+//					for (int x = j - r > 0 ? j - r : 0; x < xe; x++)
+//						if (CheckInAreaTable[x][y] && (y != i || x != j) && Mask->R[y][x] != 0)
+//						{
+//							double ColorDistanceTemp = 0;
+//							int PixelompCount = 0;
+//
+//							for (int iny = -4; iny <= 4; iny++)
+//								for (int inx = -4; inx <= 4;inx++)
+//									//if (Mask->R[y + iny][x + inx] != 0)
+//									{
+//										ColorDistanceTemp += (img.R[i + iny][j + inx] - img.R[y + iny][x + inx]) * (img.R[i + iny][j + inx] - img.R[y + iny][x + inx]);
+//										ColorDistanceTemp += (img.G[i + iny][j + inx] - img.G[y + iny][x + inx]) * (img.G[i + iny][j + inx] - img.G[y + iny][x + inx]);
+//										ColorDistanceTemp += (img.B[i + iny][j + inx] - img.B[y + iny][x + inx]) * (img.B[i + iny][j + inx] - img.B[y + iny][x + inx]);
+//										PixelompCount++;
+//									}
+//							ColorDistanceTemp /= PixelompCount;
+//							#pragma  omp critical
+//							{
+//								if (ColorDistanceTemp < MinColorDistance)
+//								{
+//									MinColorDistance = ColorDistanceTemp;
+//									RColor = img.R[y][x];
+//									GColor = img.G[y][x];
+//									BColor = img.B[y][x];
+//								}
+//							}
+//						}
+				int TempX, TempY;
+				do 
+				{
+					TempX = ((rand() & 1) * 2 - 1) * (rand() % r) +j;
+					TempY = ((rand() & 1) * 2 - 1) * (rand() % r) +i;
+				} while (TempX < 0 || TempX >= img.width || TempY < 0 || TempY >= img.height || Mask->R[TempY][TempX] == 0 || CheckInAreaTable[TempX][TempY] == false);
+				//qDebug() << TempX << TempY;
+				img.R[i][j] = img.R[TempY][TempX];
+				img.G[i][j] = img.G[TempY][TempX];
+				img.B[i][j] = img.G[TempY][TempX];
+				Mask->G[i][j] = 255;
+				Mask->B[i][j] = 255;
+				Mask->R[i][j] = 255;
+				CountPixel++;
+				/*if (CountPixel % 10000 == 0)	
+					img.writeImage((FilePath + QString::number(CountPixel)).toLocal8Bit().data(), I_HDR_T);*/
 			}
 	qDebug() << "TextureSynthesis => " << CountTime.elapsed() / 1000.0 << " s";
 }
@@ -583,22 +615,130 @@ void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsig
 
 	ImgToGray(Mask, imgs, PickNumber);
 	ImageBinarization(Mask, 7);
-	Mask = Mask->blur<double>(9);
+	Mask->blur<double>(9, Mask);
 	ImageBinarization(Mask, 127);
 	Grouping(Mask);
+	Mask->blur<double>(13, Mask);
+	ImageBinarization(Mask, 200);
 	
 	if (DebugMode)
 		Mask->writeImage((FilePath + "Mask").toLocal8Bit().data(), I_JPG_T);
 
-	//qDebug() << "123";
-	//delete Mask;
-	//Mask = new Image<double>((FilePath + "Mask").toLocal8Bit().data());
-	//qDebug() << "456";
-	//Mask->readImage((FilePath + "Mask.JPG").toLocal8Bit().data());
-	//qDebug() << "789";
-	//Mask->sRGBTolsRGB_255();
-	////qDebug() << "123" << Mask;
-	//qDebug() << "FinkMaskArea => " << CountTime.elapsed() / 1000.0 << " s";
+	qDebug() << "FinkMaskArea => " << CountTime.elapsed() / 1000.0 << " s";
+}
+
+int HDRAuto::ChangeCoordinate_ToPatchIndex(int angle, int Elevation)
+{
+	if (0 <= angle && angle < 180)
+		Elevation = 90 - Elevation;
+
+	angle = (angle + 90) % 360;
+	if (0 <= Elevation  && Elevation < 6)
+		return ((angle - 6 + 360) % 360) / 12;
+	else if (6 <= Elevation && Elevation < 18)
+		return  30 + ((angle - 6 + 360) % 360) / 12;
+	else if (18 <= Elevation && Elevation < 30)
+		return 60 + ((angle - 7 + 360) % 360) / 15;
+	else if (30 <= Elevation && Elevation < 42)
+		return 84 + ((angle - 7 + 360) % 360) / 15;
+	else if (42 <= Elevation && Elevation < 54)
+		return 108 + ((angle - 10 + 360) % 360) / 20;
+	else if (54 <= Elevation && Elevation < 66)
+		return 126 + ((angle - 15 + 360) % 360) / 30;
+	else if (66 <= Elevation && Elevation < 78)
+		return 138 + ((angle - 30 + 360) % 360) / 60;
+	else if (78 <= Elevation && Elevation <= 90)
+		return 144;
+	else
+		qDebug() << "Something Wrong" << angle << Elevation;
+	return 0;
+}
+int HDRAuto::CountForPatchIndex(int x, int y)
+{
+	if (Check_In_Area(x, y))
+	{
+		double CutImageCenterX = CubeLength / 2;
+		double CutImageCenterY = CubeLength / 2;
+		double AngleGap = (double)CubeLength / 180;
+		double TotalNum = sqrt((x - CutImageCenterX) * (x - CutImageCenterX) + (y - CutImageCenterY) * (y - CutImageCenterY));				//總共的距離
+		int Elevation = TotalNum / AngleGap;
+
+		if (TotalNum < ErrorArea)
+			return ChangeCoordinate_ToPatchIndex(0, Elevation);
+
+		double CosTheta = acos((x - CubeLength / 2) / TotalNum) * 180 / 3.1415926;			// 0	~ 180
+		double SinTheta = asin((CubeLength / 2 - y) / TotalNum) * 180 / 3.1415926;			// -90	~ 90
+
+		if (CosTheta <= 90 && SinTheta >=0)
+			return ChangeCoordinate_ToPatchIndex(CosTheta, Elevation);
+		else if (CosTheta >= 90 && SinTheta >= 0)
+			return ChangeCoordinate_ToPatchIndex(CosTheta, Elevation);
+		else if (CosTheta >= 90 && SinTheta <= 0)
+			return ChangeCoordinate_ToPatchIndex(180 - SinTheta, Elevation);
+		else
+			return ChangeCoordinate_ToPatchIndex(360 - CosTheta, Elevation);
+	}
+	return -1;
+}
+void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *&Result)
+{
+	//////////////////////////////////////////////////////////////////////////
+	// 這個的目標是一個圓
+	//	總共的數目			1		2		3		4		5		6		7		8
+	//	角度(地平線是0度)	0-6		6-18		18-30	30-42	42-54	54-66	66-78	78-90
+	//	隔幾度要算一個Patch	12		12		15		15		20		30		60		-
+	//	總共會有幾個Patch	30		30		24		24		18		12		6		1			145 隔
+	//////////////////////////////////////////////////////////////////////////
+	qDebug() << "========== RenderHDR ToResult ==========";
+	CountTime.restart();
+
+	Result = new Image<double>(img.height, img.width);
+
+	// Reset Table Index
+	int *_IndexTable = new int[img.width * img.height];						// 拿一個陣列，先清空
+	memset(_IndexTable, 0, img.width * img.height * sizeof(int));				// 先歸零
+	int **IndexTable = new int *[img.width];									// 在來New 真正用的資料
+	for (int i = 0; i < img.width; i++)
+		IndexTable[i] = &_IndexTable[i * img.width];
+
+	//For Color Totall
+	double *R_Result = new double[145];			// 0~144
+	double *G_Result = new double[145];			// 0~144
+	double *B_Result = new double[145];			// 0~144
+	memset(R_Result, 0, 145 * sizeof(double));
+	memset(G_Result, 0, 145 * sizeof(double));
+	memset(B_Result, 0, 145 * sizeof(double));
+
+	//////////////////////////////////////////////////////////////////////////
+	// 全部的點 Trace 過一次
+	//////////////////////////////////////////////////////////////////////////
+	int Index;
+#pragma omp parallel for
+	for (int i = 0; i < img.height; i++)
+		for (int j = 0; j < img.width; j++)
+		{
+			Index = CountForPatchIndex(j, i);
+			IndexTable[j][i] = Index;
+			#pragma omp critical
+			{
+				R_Result[Index] += img.R[i][j];
+				G_Result[Index] += img.G[i][j];
+				B_Result[Index] += img.B[i][j];
+			}
+		}
+	QString Output = "";
+	//////////////////////////////////////////////////////////////////////////
+	//	開始填顏色
+	//////////////////////////////////////////////////////////////////////////
+#pragma omp parallel for
+	for (int i = 0; i < img.height; i++)
+		for (int j = 0; j < img.width; j++)
+		{
+			Result->R[i][j] = R_Result[IndexTable[j][i]];
+			Result->G[i][j] = G_Result[IndexTable[j][i]];
+			Result->B[i][j] = B_Result[IndexTable[j][i]];
+		}
+	qDebug() << "RenderHDRToResult => " << CountTime.elapsed() / 1000.0 << " s";
 }
 
 void HDRAuto::OpenFileEvent()
@@ -618,7 +758,6 @@ void HDRAuto::OpenFileEvent()
 		int nImage, Mode;
 
 		(*ss) >> nImage;
-		(*ss) >> Radius;
 		(*ss) >> Mode;									// 1 代表有那條鞭
 		Image<unsigned char> *imgs = new Image<unsigned char>[nImage];
 		double *B_shutter = new double[nImage];
@@ -640,12 +779,11 @@ void HDRAuto::OpenFileEvent()
 			if (Mode == 1)
 			{
 				FindMaskArea(FilePath, HDRimg, imgs, nImage, Mask);
-				//qDebug() << "456" <<  Mask;
-				//qDebug() << "123";
-				//Mask->writeImage((FilePath + "TempMask").toLocal8Bit().data(), I_JPG_T);
-				//TextureSynthesis(HDRimg, Mask);
+				TextureSynthesis(HDRimg, Mask, FilePath);
 			}
-			HDRimg.writeImage((FilePath + "HDR_Final").toLocal8Bit().data(), I_HDR_T);
+
+			RenderHDR_ToResult(HDRimg, Mask);
+			Mask->writeImage((FilePath + "HDR_Result").toLocal8Bit().data(), I_HDR_T);
 			qDebug() << "========== Success ==========";
 		}
 		else

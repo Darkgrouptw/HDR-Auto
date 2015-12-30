@@ -391,9 +391,9 @@ class Image{
 	}
 	
 	template<class RT>
-	Image<RT>* blur(int s){
+	Image<RT>* blur(int s, Image<RT> *result=NULL){
 		int n = s*2+1;
-		Image<RT> *result = new Image<RT>(height, width);
+		if(result == NULL) result = new Image<RT>(height, width);
 		Image<double> tmp(height, width);
 		double **filter = newTex<double>(n, n);
 		gaussianFilter(filter, n);
