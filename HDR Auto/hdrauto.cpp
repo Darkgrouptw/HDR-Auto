@@ -629,29 +629,30 @@ void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsig
 
 int HDRAuto::ChangeCoordinate_ToPatchIndex(int angle, int Elevation)
 {
-	if (0 <= angle && angle < 180)
-		Elevation = 90 - Elevation;
+	//if (0 <= angle && angle < 180)
+	Elevation = 90 - Elevation;
 
-	angle = (angle + 90) % 360;
-	if (0 <= Elevation  && Elevation < 6)
+	angle = (angle + 270) % 360;
+	//return Elevation;
+	if (0 <= Elevation  && Elevation < 12)
 		return ((angle - 6 + 360) % 360) / 12;
-	else if (6 <= Elevation && Elevation < 18)
+	else if (12 <= Elevation && Elevation < 24)
 		return  30 + ((angle - 6 + 360) % 360) / 12;
-	else if (18 <= Elevation && Elevation < 30)
+	else if (24 <= Elevation && Elevation < 36)
 		return 60 + ((angle - 7 + 360) % 360) / 15;
-	else if (30 <= Elevation && Elevation < 42)
+	else if (36 <= Elevation && Elevation < 48)
 		return 84 + ((angle - 7 + 360) % 360) / 15;
-	else if (42 <= Elevation && Elevation < 54)
+	else if (48 <= Elevation && Elevation < 60)
 		return 108 + ((angle - 10 + 360) % 360) / 20;
-	else if (54 <= Elevation && Elevation < 66)
+	else if (60 <= Elevation && Elevation < 72)
 		return 126 + ((angle - 15 + 360) % 360) / 30;
-	else if (66 <= Elevation && Elevation < 78)
+	else if (72 <= Elevation && Elevation < 84)
 		return 138 + ((angle - 30 + 360) % 360) / 60;
-	else if (78 <= Elevation && Elevation <= 90)
+	else if (84 <= Elevation && Elevation <= 90)
 		return 144;
 	else
 		qDebug() << "Something Wrong" << angle << Elevation;
-	return 0;
+	return -1;
 }
 int HDRAuto::CountForPatchIndex(int x, int y)
 {
@@ -680,7 +681,7 @@ int HDRAuto::CountForPatchIndex(int x, int y)
 	}
 	return -1;
 }
-void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *&Result)
+void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 {
 	//////////////////////////////////////////////////////////////////////////
 	// 這個的目標是一個圓
@@ -692,7 +693,8 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *&Result)
 	qDebug() << "========== RenderHDR ToResult ==========";
 	CountTime.restart();
 
-	Result = new Image<double>(img.height, img.width);
+	Result->clear();
+	Result->init(img.height, img.width, 1);
 
 	// Reset Table Index
 	int *_IndexTable = new int[img.width * img.height];						// 拿一個陣列，先清空
@@ -720,6 +722,7 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *&Result)
 			Index = CountForPatchIndex(j, i);
 			IndexTable[j][i] = Index;
 			#pragma omp critical
+			if (Index != -1)
 			{
 				R_Result[Index] += img.R[i][j];
 				G_Result[Index] += img.G[i][j];
@@ -733,11 +736,35 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *&Result)
 #pragma omp parallel for
 	for (int i = 0; i < img.height; i++)
 		for (int j = 0; j < img.width; j++)
-		{
-			Result->R[i][j] = R_Result[IndexTable[j][i]];
-			Result->G[i][j] = G_Result[IndexTable[j][i]];
-			Result->B[i][j] = B_Result[IndexTable[j][i]];
-		}
+			if (IndexTable[j][i] == -1)
+			{
+				Result->R[i][j] = 0;
+				Result->G[i][j] = 0;
+				Result->B[i][j] = 0;
+			}
+			else
+			{
+				Result->R[i][j] = R_Result[IndexTable[j][i]];
+				Result->G[i][j] = G_Result[IndexTable[j][i]];
+				Result->B[i][j] = B_Result[IndexTable[j][i]];
+			}
+
+	/*QString OutStr = "";
+	for (int i = 0; i < img.height; i++)
+	{
+		for (int j = 0; j < img.width; j++)
+			OutStr += QString::number(IndexTable[j][i]) + "\t";
+		OutStr += "\n";
+	}
+	QFile AnsFile("AnsFile.txt");
+	AnsFile.open(QIODevice::WriteOnly);
+	QTextStream ss(&AnsFile);
+	ss << OutStr;
+	AnsFile.close();*/
+
+	delete[] R_Result;
+	delete[] G_Result;
+	delete[] B_Result;
 	qDebug() << "RenderHDRToResult => " << CountTime.elapsed() / 1000.0 << " s";
 }
 
@@ -781,7 +808,7 @@ void HDRAuto::OpenFileEvent()
 				FindMaskArea(FilePath, HDRimg, imgs, nImage, Mask);
 				TextureSynthesis(HDRimg, Mask, FilePath);
 			}
-
+			HDRimg.writeImage((FilePath + "HDR_TextureFinish").toLocal8Bit().data(), I_HDR_T);
 			RenderHDR_ToResult(HDRimg, Mask);
 			Mask->writeImage((FilePath + "HDR_Result").toLocal8Bit().data(), I_HDR_T);
 			qDebug() << "========== Success ==========";

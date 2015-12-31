@@ -247,6 +247,7 @@ int freadcolrs(COLR *scanline, int len, FILE *fp) { /* read in an encoded colr s
 }
 
 void setcolr(COLR clr, double r, double g, double b) {              /* assign a short color value */
+	//printf("rgb: (%13lg, %13lg, %13lg)\n", r, g, b);
     double  d;
     int  e;
 
