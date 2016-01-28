@@ -1,0 +1,24 @@
+﻿已經開始建置於 2016/1/28 下午 12:01:16。
+     1>節點 2 (Build 目標) 上的專案 "C:\Users\Graphics\Desktop\SourceTree\HDR-Auto\HDR Auto\HDR Auto.vcxproj"。
+     1>CustomBuild:
+         Uic'ing hdrauto.ui...
+       ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /I.\GeneratedFiles /I. /IC:\Qt\Qt5.5.0\5.5\msvc2013\include /I.\GeneratedFiles\Release /IC:\Qt\Qt5.5.0\5.5\msvc2013\include\QtCore /IC:\Qt\Qt5.5.0\5.5\msvc2013\include\QtGui /IC:\Qt\Qt5.5.0\5.5\msvc2013\include\QtWidgets /I..\lib\Eigen\ /I..\lib\libjpeg\ /I..\lib\libpng\ /I..\lib\zlib\ /nologo /W1 /WX- /O2 /Oy- /D UNICODE /D WIN32 /D WIN64 /D QT_DLL /D QT_NO_DEBUG /D NDEBUG /D QT_CORE_LIB /D QT_GUI_LIB /D QT_WIDGETS_LIB /Gm- /EHsc /MT /GS /fp:precise /Zc:wchar_t /Zc:forScope /openmp /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt GeneratedFiles\Release\moc_hdrauto.cpp hdrauto.cpp main.cpp
+         moc_hdrauto.cpp
+         hdrauto.cpp
+         main.cpp
+         正在產生程式碼...
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Users\Graphics\Desktop\SourceTree\HDR-Auto\Win32\Release\\HDR Auto.exe" /NOLOGO /LIBPATH:C:\Qt\Qt5.5.0\5.5\msvc2013\lib /LIBPATH:..\lib\libjpeg\ /LIBPATH:..\lib\libpng\ /LIBPATH:..\lib\zlib\ qtmain.lib Qt5Core.lib Qt5Gui.lib Qt5Widgets.lib libjpeg.lib libpng.lib zlib.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /NODEFAULTLIB:LIBCMT.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:"C:\Users\Graphics\Desktop\SourceTree\HDR-Auto\Win32\Release\HDR Auto.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Users\Graphics\Desktop\SourceTree\HDR-Auto\Win32\Release\HDR Auto.lib" /MACHINE:X86 /SAFESEH Release\qrc_hdrauto.obj
+         Release\moc_hdrauto.obj
+         Release\hdrauto.obj
+         Release\main.obj
+         libjpeg.lib(jerror.obj) : 找到 MSIL .netmodule 或以 /GL 編譯的模組。請以 /LTCG 重新啟動連結，將 /LTCG 加入連結命令列以提升連結器效能
+         正在產生程式碼
+         已完成程式碼產生
+         HDR Auto.vcxproj -> C:\Users\Graphics\Desktop\SourceTree\HDR-Auto\Win32\Release\HDR Auto.exe
+     1>專案 "C:\Users\Graphics\Desktop\SourceTree\HDR-Auto\HDR Auto\HDR Auto.vcxproj" (Build 目標) 建置完成。
+
+建置成功。
+
+經過時間 00:00:07.97

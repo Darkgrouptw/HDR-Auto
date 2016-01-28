@@ -32,30 +32,40 @@ public:
 private:
 	Ui::HDRAutoClass ui;
 
-	QTime					CountTime;															//計算時間
+	QString					FilePath;
+	QFile					*file;
+	QTextStream				*ss;
+	int						nImage, Mode;
+	Image<unsigned char>	*imgs;
+	double					*B_shutter;
+	Image<double>			*HDRimg;
+	Image<double>			*Mask;
+
+	QTime					CountTime;															// 計算時間
 
 	QFileDialog				*Dialog;
-	QVector<QImage *>		ImageStack;															//把所有的圖存進來
-	QVector<double>			ShutterStack;														//把所有的曝光時間存起來
+	QVector<QImage *>		ImageStack;															// 把所有的圖存進來
+	QVector<double>			ShutterStack;														// 把所有的曝光時間存起來
 	
 
 	// Cut Image to Fit
-	bool					ReadImage(QString, int, QTextStream *, Image<unsigned char> *, double *);//讀檔近來
+	bool					ReadImage(QString);													//讀檔進來
 	// HDR 做的事情
-	void					DoHDRMain(QString, Image<unsigned char> *, Image<double> &, double*, int);	
+	void					DoHDRMain();	
 	bool					Check_In_Area(int, int);											// 判斷選的典試不適在相機的範圍裡
 	bool					IsUseAblePoint(Image<unsigned char>*, int, int, int);				// 判斷兩個，第一個是選到的點在最亮的那張上面，是不是黑色的，第二個是判斷在最暗的那張上面，是不是白的
 
-	void					HDR_image(Image<double> &, Image<unsigned char> *, int, double *, double *, double **);
+	void					HDR_image(Image<double> *, Image<unsigned char> *, int, double *, double *, double **);
 	void					Gsolve(double **, unsigned char **, double *, int, double *, int, int);
 
-	const int				Radius = 726;														//半徑
-	int						CenterX;															//中心座標
+	const int				Radius = 726;														// 半徑
+	int						CenterX;															// 中心座標
 	int						CenterY;
 
 	// 找出哪裡是不是有遮住的算法
-	void					CutImageToCube(Image<double> &);									//把邊界剪裁到 1453 x 1453
-	void					FindMaskArea(QString, Image<double> &, Image<unsigned char> *, int, Image<double> *);
+	void					CutImageToCube(Image<double> *&);									// 把邊界剪裁到 1453 x 1453
+	void					FindMaskArea();
+	void					FillTheOrgMask(Image<double> *);									// 在另外一個 mode 的時候，會只有把邊界那個Mask找出來
 	void					FillGrayColor(Image<double> *, int, int, int);						// 把灰階值填進去
 	void					ImgToGray(Image<double> *, Image<unsigned char> *, int);
 	void					ImageBinarization(Image<double> *, double);
@@ -69,12 +79,12 @@ private:
 	
 	// Texture Synthesis
 	bool					BounaryCheck(int, int, int, int);									// 確定有沒有這個值
-	void					TextureSynthesis(Image<double> &,Image<double> * ,QString);			// 有Mask只要填顏色而已~~
+	void					TextureSynthesis(Image<double> *&,Image<double> * ,QString);		// 有Mask只要填顏色而已~~
 
 	// 把145個值算出來填顏色
 	int						ChangeCoordinate_ToPatchIndex(int, int);							// 給仰角跟角度，傳出一個patch index
 	int						CountForPatchIndex(int, int);										// 給兩個點判斷說是在哪一個patch
-	void					RenderHDR_ToResult(Image<double> &, Image<double> *);				// 把結果顯示在 Render
+	void					RenderHDR_ToResult(Image<double> *, Image<double> *);				// 把結果顯示在 Render
 
 	//位移的部分
 	const int				StartXPos = 564;
@@ -82,11 +92,16 @@ private:
 	const int				CubeLength = 1453;
 
 	const double			ErrorArea = 0.001;
-	
-	
-	const bool				DebugMode = true;													//DebugMode 是否要開啟									
+
+	const bool				DebugMode = false;													// DebugMode 是否要開啟									
 private slots:
-	void					OpenFileEvent();													//開啟檔案的事件
+	void					OpenFileEvent();													// 開啟檔案的事件s
+	void					StartEvent();														// 按 StartButton 的事件
+	void					SetMaskEvent();														// 使用這個 mask 去找 145個值
+
+	void					Text1Changed(int);													// 改變 bar1 的數字
+	void					Text2Changed(int);													// 改變 bar2 的數字
+	void					BarChangedEvent();													// Bar 1 改變時候會改變 Mask結果
 };
 
 #endif // HDRAUTO_H

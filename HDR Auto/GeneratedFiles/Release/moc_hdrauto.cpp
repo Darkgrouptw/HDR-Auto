@@ -19,8 +19,8 @@
 
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_HDRAuto_t {
-    QByteArrayData data[3];
-    char stringdata0[23];
+    QByteArrayData data[8];
+    char stringdata0[89];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -31,10 +31,17 @@ static const qt_meta_stringdata_HDRAuto_t qt_meta_stringdata_HDRAuto = {
     {
 QT_MOC_LITERAL(0, 0, 7), // "HDRAuto"
 QT_MOC_LITERAL(1, 8, 13), // "OpenFileEvent"
-QT_MOC_LITERAL(2, 22, 0) // ""
+QT_MOC_LITERAL(2, 22, 0), // ""
+QT_MOC_LITERAL(3, 23, 10), // "StartEvent"
+QT_MOC_LITERAL(4, 34, 12), // "SetMaskEvent"
+QT_MOC_LITERAL(5, 47, 12), // "Text1Changed"
+QT_MOC_LITERAL(6, 60, 12), // "Text2Changed"
+QT_MOC_LITERAL(7, 73, 15) // "BarChangedEvent"
 
     },
-    "HDRAuto\0OpenFileEvent\0"
+    "HDRAuto\0OpenFileEvent\0\0StartEvent\0"
+    "SetMaskEvent\0Text1Changed\0Text2Changed\0"
+    "BarChangedEvent"
 };
 #undef QT_MOC_LITERAL
 
@@ -44,7 +51,7 @@ static const uint qt_meta_data_HDRAuto[] = {
        7,       // revision
        0,       // classname
        0,    0, // classinfo
-       1,   14, // methods
+       6,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -52,9 +59,19 @@ static const uint qt_meta_data_HDRAuto[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    0,   19,    2, 0x08 /* Private */,
+       1,    0,   44,    2, 0x08 /* Private */,
+       3,    0,   45,    2, 0x08 /* Private */,
+       4,    0,   46,    2, 0x08 /* Private */,
+       5,    1,   47,    2, 0x08 /* Private */,
+       6,    1,   50,    2, 0x08 /* Private */,
+       7,    0,   53,    2, 0x08 /* Private */,
 
  // slots: parameters
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void,
+    QMetaType::Void, QMetaType::Int,    2,
+    QMetaType::Void, QMetaType::Int,    2,
     QMetaType::Void,
 
        0        // eod
@@ -67,10 +84,14 @@ void HDRAuto::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
         Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->OpenFileEvent(); break;
+        case 1: _t->StartEvent(); break;
+        case 2: _t->SetMaskEvent(); break;
+        case 3: _t->Text1Changed((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 4: _t->Text2Changed((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 5: _t->BarChangedEvent(); break;
         default: ;
         }
     }
-    Q_UNUSED(_a);
 }
 
 const QMetaObject HDRAuto::staticMetaObject = {
@@ -98,13 +119,13 @@ int HDRAuto::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 1)
+        if (_id < 6)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 1;
+        _id -= 6;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 1)
+        if (_id < 6)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 1;
+        _id -= 6;
     }
     return _id;
 }

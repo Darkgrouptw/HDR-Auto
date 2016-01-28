@@ -7,14 +7,20 @@ HDRAuto::HDRAuto(QWidget *parent)
 	ui.setupUi(this);
 
 	//Connect 事件
-	connect(ui.actionOpen_File, SIGNAL(triggered()), this, SLOT(OpenFileEvent()));
+	connect(ui.actionOpen_File, SIGNAL(triggered()),		this, SLOT(OpenFileEvent()));
+	connect(ui.StartButton,		SIGNAL(clicked()),			this, SLOT(StartEvent()));
+	connect(ui.Slider1,			SIGNAL(valueChanged(int)),	this, SLOT(Text1Changed(int)));
+	connect(ui.Slider1,			SIGNAL(sliderReleased()),	this, SLOT(BarChangedEvent()));
+	connect(ui.Slider2,			SIGNAL(valueChanged(int)),	this, SLOT(Text2Changed(int)));
+	connect(ui.Slider2,			SIGNAL(sliderReleased()),	this, SLOT(BarChangedEvent()));
+	connect(ui.SetMask,			SIGNAL(clicked()),			this, SLOT(SetMaskEvent()));
 }
 HDRAuto::~HDRAuto()
 {
 
 }
 
-bool HDRAuto::ReadImage(QString path, int nImage, QTextStream *ss, Image<unsigned char> *imgs, double *B_shutter)
+bool HDRAuto::ReadImage(QString path)
 {
 	qDebug() << "========== ReadImage ==========";
 	CountTime.start();
@@ -99,7 +105,7 @@ void HDRAuto::Gsolve(double **x, unsigned char **z, double B_shutter[], int l_si
 	double *test = _x.data();
 	std::copy(_x.data(), _x.data() + n + pixelNum, *x);
 }
-void HDRAuto::HDR_image(Image<double> &EnergyMap, Image<unsigned char> *img, int filesize, double *wt, double *B_shutter, double **G)
+void HDRAuto::HDR_image(Image<double> *EnergyMap, Image<unsigned char> *img, int filesize, double *wt, double *B_shutter, double **G)
 {
 	if (img == NULL || wt == NULL || B_shutter == NULL || G == NULL){
 		printf("input not enough: %s == NULL\n",
@@ -111,7 +117,7 @@ void HDRAuto::HDR_image(Image<double> &EnergyMap, Image<unsigned char> *img, int
 	int img_col = img[0].height;
 	int img_row = img[0].width;
 
-	EnergyMap.init(img_col, img_row, 1);
+	EnergyMap->init(img_col, img_row, 1);
 	//printf("init HDR image: %d, %d\n", img_col, img_row);
 
 	for (int i = 0; i < img_col; i++)
@@ -127,8 +133,8 @@ void HDRAuto::HDR_image(Image<double> &EnergyMap, Image<unsigned char> *img, int
 				t2 = t2 + wt[z1];
 			}
 			//printf("R: t1=%lg, t2=%lg, exp=%lg\n", t1, t2, exp(t1/t2));
-			EnergyMap.R[i][j] = exp(t1 / t2);
-			if (t2 == 0 && t1 == 0) EnergyMap.R[i][j] = 0;
+			EnergyMap->R[i][j] = exp(t1 / t2);
+			if (t2 == 0 && t1 == 0) EnergyMap->R[i][j] = 0;
 
 			t1 = 0, t2 = 0;
 			for (int now = 0; now < filesize; now++)
@@ -138,8 +144,8 @@ void HDRAuto::HDR_image(Image<double> &EnergyMap, Image<unsigned char> *img, int
 				t2 = t2 + wt[z2];
 			}
 			//printf("G: t1=%lg, t2=%lg, exp=%lg\n", t1, t2, exp(t1/t2));
-			EnergyMap.G[i][j] = exp(t1 / t2);
-			if (t2 == 0 && t1 == 0) EnergyMap.G[i][j] = 0;
+			EnergyMap->G[i][j] = exp(t1 / t2);
+			if (t2 == 0 && t1 == 0) EnergyMap->G[i][j] = 0;
 
 			t1 = 0, t2 = 0;
 			for (int now = 0; now < filesize; now++)
@@ -149,8 +155,8 @@ void HDRAuto::HDR_image(Image<double> &EnergyMap, Image<unsigned char> *img, int
 				t2 = t2 + wt[z3];
 			}
 			//printf("B: t1=%lg, t2=%lg, exp=%lg\n", t1, t2, exp(t1/t2));
-			EnergyMap.B[i][j] = exp(t1 / t2);
-			if (t2 == 0 && t1 == 0) EnergyMap.B[i][j] = 0;
+			EnergyMap->B[i][j] = exp(t1 / t2);
+			if (t2 == 0 && t1 == 0) EnergyMap->B[i][j] = 0;
 		}
 	}
 }
@@ -168,7 +174,7 @@ bool HDRAuto::IsUseAblePoint(Image<unsigned char>* imgs, int nImage, int tx, int
 		return false;
 	return true;
 }
-void HDRAuto::DoHDRMain(QString FilePath, Image<unsigned char> *imgs, Image<double> &HDRimg, double* B_shutter, int nImage)
+void HDRAuto::DoHDRMain()
 {
 	qDebug() << "========== HDR Main ==========";
 	CountTime.restart();
@@ -260,7 +266,7 @@ void HDRAuto::DoHDRMain(QString FilePath, Image<unsigned char> *imgs, Image<doub
 	//* write HDR
 	if (DebugMode)
 	{
-		HDRimg.writeImage((FilePath + "HDR_NoFinish").toLocal8Bit().data(), I_HDR_T);
+		HDRimg->writeImage((FilePath + "HDR_NoFinish").toLocal8Bit().data(), I_HDR_T);
 		qDebug("write HDR image done");
 	}
 
@@ -375,7 +381,6 @@ bool HDRAuto::CheckConditionInQueue(QVector<QVector2D> *Temp, int **PointTable, 
 		return true;
 	return false;
 }
-
 bool HDRAuto::BounaryCheck(int width, int height, int tx, int ty)
 {
 	if (tx < 0 || ty < 0)
@@ -384,23 +389,22 @@ bool HDRAuto::BounaryCheck(int width, int height, int tx, int ty)
 		return false;
 	return true;
 }
-
-void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask ,QString FilePath)
+void HDRAuto::TextureSynthesis(Image<double> *&img, Image<double> *Mask ,QString FilePath)
 {
 	qDebug() << "========== Texture Synthesis ==========";
 	CountTime.restart();
 	//////////////////////////////////////////////////////////////////////////
 	// 建一個Table把可以走過的路徑，填到這個表裡
 	//////////////////////////////////////////////////////////////////////////
-	bool *_CheckInAreaTable = new bool [img.width*img.height];
-	bool **CheckInAreaTable = new bool *[img.width];
-	memset(_CheckInAreaTable, 0, img.width*img.height*sizeof(bool));
-	for (int i = 0; i < img.width; i++)
-		CheckInAreaTable[i] = &_CheckInAreaTable[i*img.width];
+	bool *_CheckInAreaTable = new bool [img->width*img->height];
+	bool **CheckInAreaTable = new bool *[img->width];
+	memset(_CheckInAreaTable, 0, img->width*img->height*sizeof(bool));
+	for (int i = 0; i < img->width; i++)
+		CheckInAreaTable[i] = &_CheckInAreaTable[i*img->width];
 
 #pragma  omp parallel for
-	for (int i = 0; i < img.height; i++)
-		for (int j = 0; j < img.width; j++)
+	for (int i = 0; i < img->height; i++)
+		for (int j = 0; j < img->width; j++)
 			if (Check_In_Area(j, i))
 				CheckInAreaTable[j][i] = true;
 	qDebug() << "Build Check Area Table";
@@ -416,24 +420,24 @@ void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask ,QString 
 	int CountPixel = 0;
 
 #pragma omp parallel for
-	for (int i = 0; i < img.height; i++)
-		for (int j = 0; j < img.width; j++)
+	for (int i = 0; i < img->height; i++)
+		for (int j = 0; j < img->width; j++)
 			if (CheckInAreaTable[j][i] && Mask->R[i][j] == 0)
 			{
-				img.R[i][j] = (rand() % 256);
-				img.G[i][j] = (rand() % 256);
-				img.B[i][j] = (rand() % 256);
+				img->R[i][j] = (rand() % 256);
+				img->G[i][j] = (rand() % 256);
+				img->B[i][j] = (rand() % 256);
 			}
-	//img.writeImage((FilePath + "Temp").toLocal8Bit().data(), I_HDR_T);
-	for (int i = 0; i < img.height; i++)
-		for (int j = 0; j < img.width;j++)
+	//img->writeImage((FilePath + "Temp").toLocal8Bit().data(), I_HDR_T);
+	for (int i = 0; i < img->height; i++)
+		for (int j = 0; j < img->width;j++)
 			if (CheckInAreaTable[j][i] && Mask->R[i][j] == 0)
 			{
 				//qDebug() << "Need Fill Color =>" << j << i << Mask->R[i][j] << Mask->G[i][j] << Mask->B[i][j];
 				MinColorDistance = 99999999;
 				const int r = 150;
-//				int ye = img.height > i + r ? i + r : img.height;
-//				int xe = img.width > j + r ? j + r : img.width;
+//				int ye = img->height > i + r ? i + r : img->height;
+//				int xe = img->width > j + r ? j + r : img->width;
 //#pragma omp parallel for
 //				for (int y = i-r > 0 ? i-r : 0; y < ye; y++)
 //					for (int x = j - r > 0 ? j - r : 0; x < xe; x++)
@@ -446,9 +450,9 @@ void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask ,QString 
 //								for (int inx = -4; inx <= 4;inx++)
 //									//if (Mask->R[y + iny][x + inx] != 0)
 //									{
-//										ColorDistanceTemp += (img.R[i + iny][j + inx] - img.R[y + iny][x + inx]) * (img.R[i + iny][j + inx] - img.R[y + iny][x + inx]);
-//										ColorDistanceTemp += (img.G[i + iny][j + inx] - img.G[y + iny][x + inx]) * (img.G[i + iny][j + inx] - img.G[y + iny][x + inx]);
-//										ColorDistanceTemp += (img.B[i + iny][j + inx] - img.B[y + iny][x + inx]) * (img.B[i + iny][j + inx] - img.B[y + iny][x + inx]);
+//										ColorDistanceTemp += (img->R[i + iny][j + inx] - img->R[y + iny][x + inx]) * (img->R[i + iny][j + inx] - img->R[y + iny][x + inx]);
+//										ColorDistanceTemp += (img->G[i + iny][j + inx] - img->G[y + iny][x + inx]) * (img->G[i + iny][j + inx] - img->G[y + iny][x + inx]);
+//										ColorDistanceTemp += (img->B[i + iny][j + inx] - img->B[y + iny][x + inx]) * (img->B[i + iny][j + inx] - img->B[y + iny][x + inx]);
 //										PixelompCount++;
 //									}
 //							ColorDistanceTemp /= PixelompCount;
@@ -457,9 +461,9 @@ void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask ,QString 
 //								if (ColorDistanceTemp < MinColorDistance)
 //								{
 //									MinColorDistance = ColorDistanceTemp;
-//									RColor = img.R[y][x];
-//									GColor = img.G[y][x];
-//									BColor = img.B[y][x];
+//									RColor = img->R[y][x];
+//									GColor = img->G[y][x];
+//									BColor = img->B[y][x];
 //								}
 //							}
 //						}
@@ -468,21 +472,20 @@ void HDRAuto::TextureSynthesis(Image<double> &img, Image<double> *Mask ,QString 
 				{
 					TempX = ((rand() & 1) * 2 - 1) * (rand() % r) +j;
 					TempY = ((rand() & 1) * 2 - 1) * (rand() % r) +i;
-				} while (TempX < 0 || TempX >= img.width || TempY < 0 || TempY >= img.height || Mask->R[TempY][TempX] == 0 || CheckInAreaTable[TempX][TempY] == false);
+				} while (TempX < 0 || TempX >= img->width || TempY < 0 || TempY >= img->height || Mask->R[TempY][TempX] == 0 || CheckInAreaTable[TempX][TempY] == false);
 				//qDebug() << TempX << TempY;
-				img.R[i][j] = img.R[TempY][TempX];
-				img.G[i][j] = img.G[TempY][TempX];
-				img.B[i][j] = img.G[TempY][TempX];
+				img->R[i][j] = img->R[TempY][TempX];
+				img->G[i][j] = img->G[TempY][TempX];
+				img->B[i][j] = img->G[TempY][TempX];
 				Mask->G[i][j] = 255;
 				Mask->B[i][j] = 255;
 				Mask->R[i][j] = 255;
 				CountPixel++;
 				/*if (CountPixel % 10000 == 0)	
-					img.writeImage((FilePath + QString::number(CountPixel)).toLocal8Bit().data(), I_HDR_T);*/
+					img->writeImage((FilePath + QString::number(CountPixel)).toLocal8Bit().data(), I_HDR_T);*/
 			}
 	qDebug() << "TextureSynthesis => " << CountTime.elapsed() / 1000.0 << " s";
 }
-
 void HDRAuto::Grouping(Image<double> *img)
 {
 	//////////////////////////////////////////////////////////////////////////
@@ -585,7 +588,7 @@ void HDRAuto::Grouping(Image<double> *img)
 				}
 }
 
-void HDRAuto::CutImageToCube(Image<double> &img)
+void HDRAuto::CutImageToCube(Image<double> *&img)
 {
 	//////////////////////////////////////////////////////////////////////////
 	// 把圖切成正方形
@@ -596,17 +599,17 @@ void HDRAuto::CutImageToCube(Image<double> &img)
 	for (int i = 0; i < Result->height; i++)
 		for (int j = 0; j < Result->width; j++)
 		{
-			Result->R[i][j] = img.R[i + StartYPos][j + StartXPos];
-			Result->G[i][j] = img.G[i + StartYPos][j + StartXPos];
-			Result->B[i][j] = img.B[i + StartYPos][j + StartXPos];
+			Result->R[i][j] = img->R[i + StartYPos][j + StartXPos];
+			Result->G[i][j] = img->G[i + StartYPos][j + StartXPos];
+			Result->B[i][j] = img->B[i + StartYPos][j + StartXPos];
 		}
 	//delete &img;
-	img = *Result;
+	img = Result;
 	CenterX = CubeLength / 2;
 	CenterY = CubeLength / 2;
 	qDebug() << "FinkMaskArea => " << CountTime.elapsed() / 1000.0 << " s";
 }
-void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsigned char> imgs[], int nImage, Image<double> *Mask)
+void HDRAuto::FindMaskArea()
 {
 	qDebug() << "========== Fink Mask Area ==========";
 	CountTime.restart();
@@ -614,9 +617,9 @@ void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsig
 	qDebug() << "Pick imgs[" << PickNumber << "] to find mask";
 
 	ImgToGray(Mask, imgs, PickNumber);
-	ImageBinarization(Mask, 7);
+	ImageBinarization(Mask, ui.Slider1->value());
 	Mask->blur<double>(9, Mask);
-	ImageBinarization(Mask, 127);
+	ImageBinarization(Mask, ui.Slider2->value());
 	Grouping(Mask);
 	Mask->blur<double>(13, Mask);
 	ImageBinarization(Mask, 200);
@@ -626,7 +629,13 @@ void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsig
 
 	qDebug() << "FinkMaskArea => " << CountTime.elapsed() / 1000.0 << " s";
 }
-
+void HDRAuto::FillTheOrgMask(Image<double> *FixMask)
+{
+	for (int i = 0; i < FixMask->height; i++)
+		for (int j = 0; j < FixMask->width; j++)
+			if (Check_In_Area(j, i))
+				FillGrayColor(FixMask, i, j, 255);
+}
 int HDRAuto::ChangeCoordinate_ToPatchIndex(int angle, int Elevation)
 {
 	//if (0 <= angle && angle < 180)
@@ -681,7 +690,7 @@ int HDRAuto::CountForPatchIndex(int x, int y)
 	}
 	return -1;
 }
-void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
+void HDRAuto::RenderHDR_ToResult(Image<double> *img,Image<double> *Result)
 {
 	//////////////////////////////////////////////////////////////////////////
 	// 這個的目標是一個圓
@@ -694,14 +703,14 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 	CountTime.restart();
 
 	Result->clear();
-	Result->init(img.height, img.width, 1);
+	Result->init(img->height, img->width, 1);
 
 	// Reset Table Index
-	int *_IndexTable = new int[img.width * img.height];						// 拿一個陣列，先清空
-	memset(_IndexTable, 0, img.width * img.height * sizeof(int));				// 先歸零
-	int **IndexTable = new int *[img.width];									// 在來New 真正用的資料
-	for (int i = 0; i < img.width; i++)
-		IndexTable[i] = &_IndexTable[i * img.width];
+	int *_IndexTable = new int[img->width * img->height];						// 拿一個陣列，先清空
+	memset(_IndexTable, 0, img->width * img->height * sizeof(int));				// 先歸零
+	int **IndexTable = new int *[img->width];									// 在來New 真正用的資料
+	for (int i = 0; i < img->width; i++)
+		IndexTable[i] = &_IndexTable[i * img->width];
 
 	//For Color Totall
 	double *R_Result = new double[145];			// 0~144
@@ -716,17 +725,17 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 	//////////////////////////////////////////////////////////////////////////
 	int Index;
 #pragma omp parallel for
-	for (int i = 0; i < img.height; i++)
-		for (int j = 0; j < img.width; j++)
+	for (int i = 0; i < img->height; i++)
+		for (int j = 0; j < img->width; j++)
 		{
 			Index = CountForPatchIndex(j, i);
 			IndexTable[j][i] = Index;
 			#pragma omp critical
 			if (Index != -1)
 			{
-				R_Result[Index] += img.R[i][j];
-				G_Result[Index] += img.G[i][j];
-				B_Result[Index] += img.B[i][j];
+				R_Result[Index] += img->R[i][j];
+				G_Result[Index] += img->G[i][j];
+				B_Result[Index] += img->B[i][j];
 			}
 		}
 	QString Output = "";
@@ -734,8 +743,8 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 	//	開始填顏色
 	//////////////////////////////////////////////////////////////////////////
 #pragma omp parallel for
-	for (int i = 0; i < img.height; i++)
-		for (int j = 0; j < img.width; j++)
+	for (int i = 0; i < img->height; i++)
+		for (int j = 0; j < img->width; j++)
 			if (IndexTable[j][i] == -1)
 			{
 				Result->R[i][j] = 0;
@@ -750,9 +759,9 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 			}
 
 	/*QString OutStr = "";
-	for (int i = 0; i < img.height; i++)
+	for (int i = 0; i < img->height; i++)
 	{
-		for (int j = 0; j < img.width; j++)
+		for (int j = 0; j < img->width; j++)
 			OutStr += QString::number(IndexTable[j][i]) + "\t";
 		OutStr += "\n";
 	}
@@ -772,13 +781,17 @@ void HDRAuto::OpenFileEvent()
 {
 	//讀 txt 檔
 	qDebug() << "========== Open File ==========";
-	QString FilePath = QFileDialog::getOpenFileName(this,
+	FilePath = QFileDialog::getOpenFileName(this,
 		tr("Open Text"),
 		"C:/Users/Graphics/Desktop/SourceTree/HDR-Auto/Win32/Release/HDR Pictures/",
 		tr("Text Files(*.txt)"));
-	QFile file(FilePath);
+	file = new QFile(FilePath);
 	qDebug() << "Path: " << FilePath;
-	if (file.open(QIODevice::ReadOnly))
+	ui.StartButton->setEnabled(true);
+	ui.SetMask->setEnabled(false);
+	qDebug() << "========== Finish ==========";
+	/*
+	if (file->open(QIODevice::ReadOnly))
 	{
 		//讀檔案
 		QTextStream *ss = new QTextStream(&file);
@@ -808,13 +821,89 @@ void HDRAuto::OpenFileEvent()
 				FindMaskArea(FilePath, HDRimg, imgs, nImage, Mask);
 				TextureSynthesis(HDRimg, Mask, FilePath);
 			}
-			HDRimg.writeImage((FilePath + "HDR_TextureFinish").toLocal8Bit().data(), I_HDR_T);
+			//HDRimg.writeImage((FilePath + "HDR_MiddleResult").toLocal8Bit().data(), I_HDR_T);
 			RenderHDR_ToResult(HDRimg, Mask);
 			Mask->writeImage((FilePath + "HDR_Result").toLocal8Bit().data(), I_HDR_T);
 			qDebug() << "========== Success ==========";
 		}
 		else
 			qDebug() << "========== Fail ==========";
-		file.close();
+		file->close();
+	}*/
+}
+void HDRAuto::StartEvent()
+{
+	if (file->open(QIODevice::ReadOnly))
+	{
+		ui.StartButton->setEnabled(false);
+		//讀檔案
+		ss = new QTextStream(file);
+
+		(*ss) >> nImage;
+		(*ss) >> Mode;									// 1 代表有那條 ring
+		imgs = new Image<unsigned char>[nImage];
+		B_shutter = new double[nImage];
+
+
+		QStringList strlist = FilePath.split("/");
+		FilePath = "";
+		for (int i = 0; i < strlist.length() - 1; i++)
+			FilePath += strlist[i] + "/";
+		qDebug() << "Location => " << FilePath;
+
+		HDRimg = new Image<double>();
+		Mask = new Image<double>(CubeLength, CubeLength);
+
+		if (ReadImage(FilePath))
+		{
+			DoHDRMain();
+			CutImageToCube(HDRimg);
+			
+			BarChangedEvent();
+			ui.SetMask->setEnabled(true);
+			ui.Slider1->setEnabled(true);
+			ui.Slider2->setEnabled(true);
+			file->close();
+		}
+		else
+			qDebug() << "!!!!!!!!!! ReadImage Error !!!!!!!!!!";
 	}
+	else
+		qDebug() << "!!!!!!!!!! Input File Error !!!!!!!!!!";
+	qDebug() << "========== Finish ==========";
+}
+void HDRAuto::SetMaskEvent()
+{
+	ui.SetMask->setEnabled(false);
+	ui.Slider1->setEnabled(false);
+	ui.Slider2->setEnabled(false);
+
+	if (Mode == 1)
+		TextureSynthesis(HDRimg, Mask, FilePath);
+	RenderHDR_ToResult(HDRimg, Mask);
+	Mask->writeImage((FilePath + "HDR_Result").toLocal8Bit().data(), I_HDR_T);
+	qDebug() << "========== Success ==========";
+
+}
+
+void HDRAuto::Text1Changed(int x)
+{
+	ui.ThresholdText1->setText(QString::number(x));
+}
+void HDRAuto::Text2Changed(int x)
+{
+	ui.ThresholdText2->setText(QString::number(x));
+}
+void HDRAuto::BarChangedEvent()
+{
+	if (Mode == 1)
+		FindMaskArea();
+	else
+		FillTheOrgMask(Mask);
+	Image<double> *FixMask = new Image<double>(Mask->height, Mask->width);
+	(*FixMask) = (*Mask);
+	FixMask->tomemapping();
+	FixMask->writeImage("temp", I_JPG_T);
+	ui.MaskPic->setPixmap(QPixmap("temp.JPG").scaled(500, 500));
+	QFile::remove("temp.JPG");
 }
