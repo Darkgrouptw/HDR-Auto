@@ -84,7 +84,7 @@ private:
 	const double			ErrorArea = 0.001;
 	
 	
-	const bool				DebugMode = true;													//DebugMode 是否要開啟									
+	const bool				DebugMode = false;													//DebugMode 是否要開啟									
 private slots:
 	void					OpenFileEvent();													//開啟檔案的事件
 };

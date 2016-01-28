@@ -808,7 +808,8 @@ void HDRAuto::OpenFileEvent()
 				FindMaskArea(FilePath, HDRimg, imgs, nImage, Mask);
 				TextureSynthesis(HDRimg, Mask, FilePath);
 			}
-			HDRimg.writeImage((FilePath + "HDR_TextureFinish").toLocal8Bit().data(), I_HDR_T);
+			if (DebugMode)
+				HDRimg.writeImage((FilePath + "HDR_TextureFinish").toLocal8Bit().data(), I_HDR_T);
 			RenderHDR_ToResult(HDRimg, Mask);
 			Mask->writeImage((FilePath + "HDR_Result").toLocal8Bit().data(), I_HDR_T);
 			qDebug() << "========== Success ==========";
