@@ -74,7 +74,8 @@ private:
 	// 把145個值算出來填顏色
 	int						ChangeCoordinate_ToPatchIndex(int, int);							// 給仰角跟角度，傳出一個patch index
 	int						CountForPatchIndex(int, int);										// 給兩個點判斷說是在哪一個patch
-	void					RenderHDR_ToResult(Image<double> &, Image<double> *);				// 把結果顯示在 Render
+	void					RenderHDR_ToResult(Image<double> &, Image<double> *, QString);		// 把結果顯示在 Render，並填入 145 個值
+	
 
 	//位移的部分
 	const int				StartXPos = 564;

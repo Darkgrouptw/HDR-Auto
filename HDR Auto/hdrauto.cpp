@@ -632,7 +632,7 @@ int HDRAuto::ChangeCoordinate_ToPatchIndex(int angle, int Elevation)
 	//if (0 <= angle && angle < 180)
 	Elevation = 90 - Elevation;
 
-	angle = (angle + 270) % 360;
+	angle = (angle + 90 + 12) % 360;				// 位移一點
 	//return Elevation;
 	if (0 <= Elevation  && Elevation < 12)
 		return ((angle - 6 + 360) % 360) / 12;
@@ -681,14 +681,14 @@ int HDRAuto::CountForPatchIndex(int x, int y)
 	}
 	return -1;
 }
-void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
+void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result, QString Filepath)
 {
 	//////////////////////////////////////////////////////////////////////////
 	// 這個的目標是一個圓
 	//	總共的數目			1		2		3		4		5		6		7		8
 	//	角度(地平線是0度)	0-6		6-18		18-30	30-42	42-54	54-66	66-78	78-90
 	//	隔幾度要算一個Patch	12		12		15		15		20		30		60		-
-	//	總共會有幾個Patch	30		30		24		24		18		12		6		1			145 隔
+	//	總共會有幾個Patch	30		30		24		24		18		12		6		1			145 格
 	//////////////////////////////////////////////////////////////////////////
 	qDebug() << "========== RenderHDR ToResult ==========";
 	CountTime.restart();
@@ -703,30 +703,26 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 	for (int i = 0; i < img.width; i++)
 		IndexTable[i] = &_IndexTable[i * img.width];
 
-	//For Color Totall
-	double *R_Result = new double[145];			// 0~144
-	double *G_Result = new double[145];			// 0~144
-	double *B_Result = new double[145];			// 0~144
-	memset(R_Result, 0, 145 * sizeof(double));
-	memset(G_Result, 0, 145 * sizeof(double));
-	memset(B_Result, 0, 145 * sizeof(double));
+	// 只需要知道他的亮度值，hdr 之後，只要取灰階，就是他的亮度
+	double	*Iuminance_Result = new double[145];
+	memset(Iuminance_Result, 0, 145 * sizeof(double));
+	int *Count_Result = new int[145];
+	memset(Count_Result, 0, 145 * sizeof(int));
 
 	//////////////////////////////////////////////////////////////////////////
 	// 全部的點 Trace 過一次
 	//////////////////////////////////////////////////////////////////////////
-	int Index;
 #pragma omp parallel for
 	for (int i = 0; i < img.height; i++)
 		for (int j = 0; j < img.width; j++)
 		{
-			Index = CountForPatchIndex(j, i);
+			int Index = CountForPatchIndex(j, i);
 			IndexTable[j][i] = Index;
 			#pragma omp critical
 			if (Index != -1)
 			{
-				R_Result[Index] += img.R[i][j];
-				G_Result[Index] += img.G[i][j];
-				B_Result[Index] += img.B[i][j];
+				Iuminance_Result[Index] += 0.299 * img.R[i][j] + 0.587 *  img.G[i][j] + 0.114 * img.B[i][j];
+				Count_Result[Index] ++;
 			}
 		}
 	QString Output = "";
@@ -744,27 +740,50 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result)
 			}
 			else
 			{
-				Result->R[i][j] = R_Result[IndexTable[j][i]];
-				Result->G[i][j] = G_Result[IndexTable[j][i]];
-				Result->B[i][j] = B_Result[IndexTable[j][i]];
+				Result->R[i][j] = Iuminance_Result[IndexTable[j][i]];
+				Result->G[i][j] = Iuminance_Result[IndexTable[j][i]];
+				Result->B[i][j] = Iuminance_Result[IndexTable[j][i]];
 			}
+	// 測試整個點的位置
+	//QString OutStr = "";
+	//for (int i = 0; i < img.height; i++)
+	//{
+	//	for (int j = 0; j < img.width; j++)
+	//		OutStr += QString::number(IndexTable[j][i]) + "\t";
+	//	OutStr += "\n";
+	//}
+	//QFile AnsFile("AnsFile.txt");
+	//AnsFile.open(QIODevice::WriteOnly);
+	//QTextStream ss(&AnsFile);
+	//ss << OutStr;
+	//AnsFile.close();
 
-	/*QString OutStr = "";
-	for (int i = 0; i < img.height; i++)
+	// 把 145 個值寫進去
+	QFile CSV_File(Filepath + "result.csv");
+	if (CSV_File.open(QIODevice::WriteOnly))
 	{
-		for (int j = 0; j < img.width; j++)
-			OutStr += QString::number(IndexTable[j][i]) + "\t";
-		OutStr += "\n";
-	}
-	QFile AnsFile("AnsFile.txt");
-	AnsFile.open(QIODevice::WriteOnly);
-	QTextStream ss(&AnsFile);
-	ss << OutStr;
-	AnsFile.close();*/
+		QTextStream ss(&CSV_File);
+		ss.setCodec("UTF-8");
+		double ans = 0;
 
-	delete[] R_Result;
-	delete[] G_Result;
-	delete[] B_Result;
+		// 先算出145個 total
+		for (int i = 0; i < 145; i++)
+			ans += Iuminance_Result[i];
+		//ans /=
+		ss << "lux,," << QString::number(ans , 'f', 2) << "\n";
+		ss << ",,Luminance(cd/m2),Radinance(W/sr*m2),\n";
+		ss << "0,,," << QString::number(ans / 2 / 3.14159 / 179 * 0.2, 'f', 2) << ",\n";
+
+		for (int i = 0; i < 145; i++)
+		{
+			ans = Iuminance_Result[i] / Count_Result[i] * 73.74054163;
+			ss << (i + 1) << ",," << QString::number(ans, 'f', 8) << "," << QString::number(ans * 1.1097 / 179, 'f', 8) << ",\n";
+		}
+		CSV_File.close();
+	}
+
+
+	delete[] Iuminance_Result;
 	qDebug() << "RenderHDRToResult => " << CountTime.elapsed() / 1000.0 << " s";
 }
 
@@ -796,9 +815,10 @@ void HDRAuto::OpenFileEvent()
 			FilePath += strlist[i] + "/";
 		qDebug() << "Location => "<< FilePath;
 
-		// HDR Image
+		// HDR Image 做 100 次 平均的結果
 		Image<double> HDRimg;
 		Image<double> *Mask = new Image<double>(CubeLength, CubeLength);
+
 		if (ReadImage(FilePath, nImage, ss, imgs, B_shutter))
 		{
 			DoHDRMain(FilePath, imgs, HDRimg, B_shutter, nImage);
@@ -810,7 +830,7 @@ void HDRAuto::OpenFileEvent()
 			}
 			if (DebugMode)
 				HDRimg.writeImage((FilePath + "HDR_TextureFinish").toLocal8Bit().data(), I_HDR_T);
-			RenderHDR_ToResult(HDRimg, Mask);
+			RenderHDR_ToResult(HDRimg, Mask, FilePath);
 			Mask->writeImage((FilePath + "HDR_Result").toLocal8Bit().data(), I_HDR_T);
 			qDebug() << "========== Success ==========";
 		}
