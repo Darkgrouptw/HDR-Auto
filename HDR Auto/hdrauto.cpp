@@ -610,7 +610,7 @@ void HDRAuto::FindMaskArea(QString FilePath, Image<double> &HDRimgs, Image<unsig
 {
 	qDebug() << "========== Fink Mask Area ==========";
 	CountTime.restart();
-	int PickNumber = nImage /2;
+	int PickNumber = nImage / 2 + 1 ;
 	qDebug() << "Pick imgs[" << PickNumber << "] to find mask";
 
 	ImgToGray(Mask, imgs, PickNumber);
@@ -712,13 +712,13 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result, QStri
 	//////////////////////////////////////////////////////////////////////////
 	// 全部的點 Trace 過一次
 	//////////////////////////////////////////////////////////////////////////
-#pragma omp parallel for
+//#pragma omp parallel for
 	for (int i = 0; i < img.height; i++)
 		for (int j = 0; j < img.width; j++)
 		{
 			int Index = CountForPatchIndex(j, i);
 			IndexTable[j][i] = Index;
-			#pragma omp critical
+			//#pragma omp critical
 			if (Index != -1)
 			{
 				Iuminance_Result[Index] += 0.299 * img.R[i][j] + 0.587 *  img.G[i][j] + 0.114 * img.B[i][j];
@@ -776,12 +776,11 @@ void HDRAuto::RenderHDR_ToResult(Image<double> &img,Image<double> *Result, QStri
 
 		for (int i = 0; i < 145; i++)
 		{
-			ans = Iuminance_Result[i] / Count_Result[i] * 73.74054163;
+			ans = Iuminance_Result[i];// / Count_Result[i];// *37.64474756;
 			ss << (i + 1) << ",," << QString::number(ans, 'f', 8) << "," << QString::number(ans * 1.1097 / 179, 'f', 8) << ",\n";
 		}
 		CSV_File.close();
 	}
-
 
 	delete[] Iuminance_Result;
 	qDebug() << "RenderHDRToResult => " << CountTime.elapsed() / 1000.0 << " s";

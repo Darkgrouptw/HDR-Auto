@@ -15,7 +15,6 @@
 #include <QTextStream>
 #include <QTime>
 #include <QStringList>
-#include <QMessageBox>
 
 #include <Eigen/Sparse>
 template<class T> class Image;
@@ -39,7 +38,7 @@ private:
 	QVector<double>			ShutterStack;														//把所有的曝光時間存起來
 	
 
-	// Cut Image to Fit
+	// Read Image
 	bool					ReadImage(QString, int, QTextStream *, Image<unsigned char> *, double *);//讀檔近來
 	// HDR 做的事情
 	void					DoHDRMain(QString, Image<unsigned char> *, Image<double> &, double*, int);	
